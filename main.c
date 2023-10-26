@@ -8,14 +8,14 @@ int main(void)
 
     int iresLoc        = GetShaderLocation(FractalShader, "resolution");
     int topLeftloc     = GetShaderLocation(FractalShader, "topLeft");
-    int bottomRightloc = GetShaderLocation(FractalShader, "bottomRight");
+    int scaleLoc = GetShaderLocation(FractalShader, "scale");
 
     
 
     float resolution[2] = {800, 450};
 
     float topLeft[2] = {0, 0};
-    float bottomRight[2] = {1, 1};
+    float scale = 1.0f;
 
     SetShaderValue(FractalShader, iresLoc, resolution, SHADER_UNIFORM_VEC2);
 
@@ -23,7 +23,7 @@ int main(void)
     {
 
         SetShaderValue(FractalShader, topLeftloc, topLeft, SHADER_ATTRIB_VEC2);
-        SetShaderValue(FractalShader, bottomRightloc, bottomRight, SHADER_ATTRIB_VEC2);
+        SetShaderValue(FractalShader, scaleLoc, &scale, SHADER_UNIFORM_FLOAT);
 
         BeginDrawing();
             ClearBackground(BLACK);
@@ -33,13 +33,20 @@ int main(void)
             DrawFPS(10, 10);
         EndDrawing();
 
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
-            float mousex = ((float)GetMouseX()/800.0f);
-            float mousey = ((float)GetMouseY()/450.0f);
-            topLeft[0] += (bottomRight[0]-topLeft[0])*mousex*GetFrameTime();
-            topLeft[1] += (bottomRight[1]-topLeft[1])*mousey*GetFrameTime();
-            bottomRight[0] -= (bottomRight[0]-topLeft[0])*mousex*GetFrameTime();
-            bottomRight[1] -= (bottomRight[1]-topLeft[1])*mousey*GetFrameTime();
+        if(IsKeyDown(KEY_SPACE)){
+            scale *= 1-GetFrameTime();
+        }
+        if(IsKeyDown(KEY_LEFT)){
+            topLeft[0] -= GetFrameTime()*scale;
+        }
+        if(IsKeyDown(KEY_RIGHT)){
+            topLeft[0] += GetFrameTime()*scale;
+        }
+        if(IsKeyDown(KEY_UP)){
+            topLeft[1] -= GetFrameTime()*scale;
+        }
+        if(IsKeyDown(KEY_DOWN)){
+            topLeft[1] += GetFrameTime()*scale;
         }
     }
     UnloadShader(FractalShader);
