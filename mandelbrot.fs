@@ -22,5 +22,5 @@ void main(){
         z = product(z, z) + c;
         iteration ++;
     }
-    finalColor = length(z)<2 ? vec4(0, 0, 0, 1) :vec4(1, 1, 1, 1)*(iteration/100);
+    finalColor = length(z)<2 ? vec4(0, 0, 0, 1) :vec4(1, 1, 1, 1)*(tanh(pow(scale, 0.5)*iteration));
 }
