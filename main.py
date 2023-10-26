@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-N=10000
-x = np.linspace(-2.7,2.7,N)
+N=5000
+x = np.linspace(-2.7,2.7,N, dtype=np.complex64)
 
 img = x[:,None] + complex('j') * x
 
