@@ -43,10 +43,10 @@ int main(void)
             topLeft[0] += GetFrameTime()*scale;
         }
         if(IsKeyDown(KEY_UP)){
-            topLeft[1] -= GetFrameTime()*scale;
+            topLeft[1] += GetFrameTime()*scale;
         }
         if(IsKeyDown(KEY_DOWN)){
-            topLeft[1] += GetFrameTime()*scale;
+            topLeft[1] -= GetFrameTime()*scale;
         }
     }
     UnloadShader(FractalShader);
