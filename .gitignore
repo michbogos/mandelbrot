@@ -1,5 +1,7 @@
 mandelbrot
 optimized
 multithreaded
+avx
+gmp
 /frames
 zoom.mp4

@@ -6,3 +6,9 @@ multithreaded: multithreaded.cpp
 
 raylib: main.c
 	gcc main.c -Ofast -o mandelbrot -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+
+gmp: gmp.cpp
+	g++ gmp.cpp -o gmp -lm -Ofast -mtune=native -march=native -fno-signed-zeros -fno-trapping-math -fopenmp -D_GLIBCXX_PARALLEL
+
+avx: avx.cpp
+	g++ avx.cpp -o avx -lm -march=native -mtune=native -Ofast  -fno-signed-zeros -fno-trapping-math -fopenmp -D_GLIBCXX_PARALLEL
