@@ -11,8 +11,8 @@
 #include<immintrin.h>
 #define WIDTH 1024
 #define HEIGHT 1024
-#define MAX_ITERATIONS 500
-#define FRAMES 2400
+#define MAX_ITERATIONS 1000
+#define FRAMES 500
 #define MAX_MAGNIFICATION 0.0000000000001
 #define NUM_THREADS 8
 
@@ -102,7 +102,7 @@ void imagen(){
                         // data[(WIDTH*(j+idx)+i)*4+1] = 255*sin(_ys[idx]);
                         // data[(WIDTH*(j+idx)+i)*4+2] = 255*0;
                         // data[(WIDTH*(j+idx)+i)*4+3] = 255;
-                        if((int)_res[idx] == 1000){
+                        if((int)_res[idx] == MAX_ITERATIONS){
                             data[(WIDTH*(j+idx)+i)*4+0] = 0;
                             data[(WIDTH*(j+idx)+i)*4+1] = 0;
                             data[(WIDTH*(j+idx)+i)*4+2] = 0;
@@ -121,6 +121,7 @@ void imagen(){
             char buf[255];
             sprintf(buf, "./frames/%d.png", frame);
             stbi_write_png(buf, WIDTH, HEIGHT, 4, data,WIDTH*4);
+            free(data);
             printf("Generated frame: %d @ scale: %lf\n", frame, scale);
         }
     return;

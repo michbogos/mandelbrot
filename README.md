@@ -1,9 +1,21 @@
 # Mandelbrot set
 ![mandelbrot zoom](https://github.com/michbogos/mandelbrot/blob/main/zoom.gif?raw=true)
 
-This is an experiment in rendering the mandelbrot set and fractals in general
+This is an experiment in rendering the mandelbrot set and fractals in general.
 
-Zoom generated with numpy python implementation
+Zoom generated with c++avx2 implementation.
+
+## Multithreaded c++ implementation with AVX2
+
+Compile with
+
+``` bash
+
+make avx
+
+```
+
+Currently the fastest high precision implementation.
 
 ## Multithreaded c++ implementation
 
@@ -18,8 +30,6 @@ make multithreaded
 This is fast enough to generate hundreds of frames.
 
 Uses stb_image_write.h to write frames. Frames are saved in frames/*.png.
-
-Currently the fastest high precision implementation
 
 ## Optimized c implementation
 
