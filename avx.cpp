@@ -9,10 +9,10 @@
 #include<vector>
 #include<queue>
 #include<immintrin.h>
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 512
+#define HEIGHT 512
 #define MAX_ITERATIONS 1000
-#define FRAMES 500
+#define FRAMES 120
 #define MAX_MAGNIFICATION 0.0000000000001
 #define NUM_THREADS 8
 
