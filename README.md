@@ -5,6 +5,18 @@ This is an experiment in rendering the mandelbrot set and fractals in general.
 
 Zoom generated with c++avx2 implementation.
 
+## HIP implementation for AMD GPU
+
+Compile with
+
+``` bash
+
+make hip
+
+```
+
+Still very rudimentary at the moment
+
 ## Multithreaded c++ implementation with AVX2
 
 Compile with

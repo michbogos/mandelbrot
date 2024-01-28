@@ -12,9 +12,9 @@
 #define WIDTH 512
 #define HEIGHT 512
 #define MAX_ITERATIONS 1000
-#define FRAMES 120
+#define FRAMES 1000
 #define MAX_MAGNIFICATION 0.0000000000001
-#define NUM_THREADS 8
+#define NUM_THREADS 12
 
 __m256i Mand (__m256d _cr, __m256d _ci, __m256i _iterations) {
     __m256d _a,_b,_zi,_zr, _zi2, _zr2, _four, _mask1, _two;

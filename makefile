@@ -12,3 +12,6 @@ gmp: gmp.cpp
 
 avx: avx.cpp
 	g++ avx.cpp -o avx -lm -march=native -mtune=native -Ofast  -fno-signed-zeros -fno-trapping-math -fopenmp -D_GLIBCXX_PARALLEL
+
+hip: hip.cpp
+	hipcc hip.cpp -o hip
