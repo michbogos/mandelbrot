@@ -12,7 +12,7 @@
 #define WIDTH 512
 #define HEIGHT 512
 #define MAX_ITERATIONS 1000
-#define FRAMES 1000
+#define FRAMES 10000
 #define MAX_MAGNIFICATION 0.0000000000001
 #define NUM_THREADS 12
 
@@ -119,7 +119,7 @@ void imagen(){
                 }
             }
             char buf[255];
-            sprintf(buf, "./frames/%d.png", frame);
+            sprintf(buf, "./frames/%05d.png", frame);
             stbi_write_png(buf, WIDTH, HEIGHT, 4, data,WIDTH*4);
             free(data);
             printf("Generated frame: %d @ scale: %lf\n", frame, scale);

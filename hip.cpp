@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
 	unsigned char* outputBuffer;
     hipMalloc((void**)&outputBuffer, 512*512*4*sizeof(unsigned char));
 
-	MyKernel<<<dim3(512, 512), dim3(1, 1), 0, 0>>> (outputBuffer, 1000);
+	MyKernel<<<dim3(512, 512), dim3(1, 1), 0, 0>>> (outputBuffer, 1000, );
 
 	hipMemcpy(output, outputBuffer,512*512*4, hipMemcpyDeviceToHost);
 	stbi_write_png("hip.png", 512, 512, 3, output, 512*3);
