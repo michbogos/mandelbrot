@@ -1,3 +1,5 @@
+
+
 #include <hip/hip_runtime.h>
 #include<hip/hip_complex.h>
 #include <string.h>
@@ -13,8 +15,10 @@
 #define SUCCESS 0
 #define FAILURE 1
 
-#define WIDTH 512
-#define HEIGHT 512
+#define WIDTH  (4096*4)
+#define HEIGHT (4096*4)
+
+#define BLOCK 32
 
 using namespace std;
 
@@ -25,21 +29,31 @@ __device__ float interpolate(float a, float b, float t){
 
 __global__ void MyKernel(unsigned char*frame, float scale, int N)
 {
-	float colors[6][3] = {{255, 156, 87},{87, 165, 187},{198, 98, 123},{76, 71, 237},{143, 97, 198},{198, 34, 243}};
-	hipDoubleComplex c = make_hipDoubleComplex((blockIdx.x/256.0f-1.0f)*scale-0.0700432019411218, (blockIdx.y/256.0f-1.0f)*scale-0.8224676332988761);
-	hipDoubleComplex i = make_hipDoubleComplex((blockIdx.x/256.0f-1.0f)*scale-0.0700432019411218, (blockIdx.y/256.0f-1.0f)*scale-0.8224676332988761);
+	// for(int x = 0; (x<BLOCK)&&(blockIdx.x*BLOCK+x<HEIGHT);x++){
+	// 	for(int y = 0; (y<BLOCK)&&(blockIdx.y*BLOCK+y<WIDTH);y++){
+		int x = threadIdx.x;
+		int y = threadIdx.y;
+	// 			hipDoubleComplex c = make_hipDoubleComplex(((BLOCK*blockIdx.x+x)/(WIDTH*0.5f)-1.0f)*scale-0.0700432019411218, (blockIdx.y/(HEIGHT*0.5f)-1.0f)*scale-0.8224676332988761);
+	// hipDoubleComplex i = make_hipDoubleComplex((blockIdx.x/(WIDTH*0.5f)-1.0f)*scale-0.0700432019411218, (blockIdx.y/(HEIGHT*0.5f)-1.0f)*scale-0.8224676332988761);
+		hipDoubleComplex c = make_hipDoubleComplex(((((float)blockIdx.x*BLOCK+x)/((float)HEIGHT/255.0))/256.0), (((((float)blockIdx.y*BLOCK+y)/((float)WIDTH/255.0)))/256.0));
+		hipDoubleComplex i = c;
+		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = (int)(hipCreal(c)*256);
+		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = (int)(hipCimag(c)*256);
+		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = (int)0;
+	// 	}
+	// }
 	for(int n = 0; n < N; n++){
 		i = hipCadd(hipCmul(i, i), c);
 		if(hipCabs(i)>10e10f){
-			frame[(512*blockIdx.x+blockIdx.y)*3+0] = (int)exp(sqrt(sqrt(n)));
-			frame[(512*blockIdx.x+blockIdx.y)*3+1] = (int)exp(sqrt(sqrt(n)));
-			frame[(512*blockIdx.x+blockIdx.y)*3+2] = (int)exp(sqrt(sqrt(n)));
+			frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = n;
+			frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = n;
+			frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = n;
 			return;
 		}
 	}
-	frame[(512*blockIdx.x+blockIdx.y)*3+0] = 0;
-	frame[(512*blockIdx.x+blockIdx.y)*3+1] = 0;
-	frame[(512*blockIdx.x+blockIdx.y)*3+2] = 0;
+	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = 0;
+	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = 0;
+	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = 0;
 	return;
 }
 
@@ -52,15 +66,15 @@ int main(int argc, char* argv[])
     cout << " agent prop name " << devProp.name << endl;
 
 
-	unsigned char *output = (unsigned char*) malloc(512*512*3);
+	unsigned char *output = (unsigned char*) malloc(WIDTH*HEIGHT*3);
 
 	unsigned char* outputBuffer;
-    hipMalloc((void**)&outputBuffer, 512*512*3*sizeof(unsigned char));
+    hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(unsigned char));
 
-	MyKernel<<<dim3(512, 512), dim3(1, 1), 0, 0>>> (outputBuffer, 10e-14, 1000);
+	MyKernel<<<dim3((WIDTH)/BLOCK, (HEIGHT)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, 1, 1000);
 
-	hipMemcpy(output, outputBuffer,512*512*3, hipMemcpyDeviceToHost);
-	stbi_write_png("hip.png", 512, 512, 3, output, 512*3);
+	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3, hipMemcpyDeviceToHost);
+	stbi_write_png("hip.png", WIDTH, HEIGHT, 3, output, HEIGHT*3);
     hipFree(outputBuffer);
 	return SUCCESS;
 }
