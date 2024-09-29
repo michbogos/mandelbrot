@@ -7,12 +7,13 @@
 #include<vector>
 #include<queue>
 #include<gmp.h>
-#define WIDTH 1024
-#define HEIGHT 1024
+#define WIDTH 256
+#define HEIGHT 256
 #define MAX_ITERATIONS 1000
 #define FRAMES 2400
 #define MAX_MAGNIFICATION 0.0000000000001
 #define NUM_THREADS 8
+
 
 unsigned int Mand (mpf_t initx, mpf_t inity, unsigned int iterations) {
     mpf_t cx,cy,xsq,ysq, tmp;
@@ -22,6 +23,15 @@ unsigned int Mand (mpf_t initx, mpf_t inity, unsigned int iterations) {
     mpf_init(ysq);
     mpf_init(tmp);
     unsigned int iter = 0;
+
+    mpf_mul(tmp, initx, initx);
+    mpf_add(cx, initx, tmp);
+    mpf_mul(tmp, inity, inity);
+    mpf_sub(cx, cx, tmp);
+
+    mpf_mul(tmp, initx, inity);
+    mpf_mul_ui(cy, tmp,2);
+    mpf_add(cy, cy, inity);
 
     while(true){
         mpf_pow_ui(ysq, cy, 2);
@@ -38,22 +48,10 @@ unsigned int Mand (mpf_t initx, mpf_t inity, unsigned int iterations) {
     }
     return iter;
 
-
-    // mpf_mul(tmp, initx, initx);
-    // mpf_add(cx, cx,tmp);
-    // mpf_add(cx, cx,initx);
-    // mpf_clear(tmp);
-    // mpf_mul(tmp, inity, inity);
-    // mpf_sub(cx, cx, tmp);
-
-    // mpf_add(cy, cy, inity);
-    // mpf_clear(tmp);
-    // mpf_mul(tmp, initx, inity);
-    // mpf_add(cy, cy, tmp);
-    // mpf_add(cy, cy, tmp);
-
     // cx=initx+initx*initx - inity*inity;   
     // cy=inity+initx*inity+initx*inity; 
+
+    // for (iter=0;iter<iterations && (ysq=cy*cy)+(xsq=cx*cx)<4;iter++,cy=inity+cx*cy+cx*cy,cx=initx-ysq+xsq) ;
 }
 
 unsigned char colors[4][4] = {{255, 0, 0, 255},{0, 255, 0, 255},{0, 0, 255},{123, 230, 90, 255}};
@@ -68,19 +66,22 @@ void imagen(){
     mpf_init_set_str(dy, "-0.8224676131988761", 10);
     mpf_init_set_d(width, ((double)WIDTH));
     mpf_init_set_d(height, ((double)HEIGHT));
+    mpf_init_set_d(scale, 1.0);
+    mpf_init_set_d(scale_mul, 0.99);
+    mpf_init(iw);
+    mpf_init(jh);
+    mpf_init(x);
+    mpf_init(y);
     while(!tasks.empty()){
         int frame = tasks.front();
         tasks.pop();
         unsigned char* data = (unsigned char*)malloc(HEIGHT*WIDTH*4*sizeof(unsigned char));
-        mpf_init_set_d(scale, 1.0);
-        mpf_init_set_d(scale_mul, 0.99);
-        for(int i = 0; i < frame; i++){
-            mpf_mul(scale, scale, scale_mul);
-        }
+        mpf_mul(scale, scale, scale_mul);
             for(int i = 0; i< WIDTH; i++){
+                printf("Row %d\n", i);
                 mpf_set_d(iw, (double)i/WIDTH);
                 for(int j = 0; j < HEIGHT; j++){
-                    mpf_set_d(iw, (double)j/HEIGHT);
+                    mpf_set_d(jh, (double)j/HEIGHT);
                     mpf_mul(x, iw, scale);
                     mpf_mul(y, jh, scale);
                     int res = Mand(x, y, MAX_ITERATIONS);
@@ -109,7 +110,7 @@ void imagen(){
 
 
 int main(){
-    mpf_set_default_prec(64);
+    mpf_set_default_prec(1024);
     int frame = 0;
     for(int i = 0; i < FRAMES; i++){
         tasks.push(i);
