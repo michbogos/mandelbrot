@@ -7,44 +7,48 @@
 #include<vector>
 #include<queue>
 #include<gmp.h>
+#include<omp.h>
 #define WIDTH 256
 #define HEIGHT 256
 #define MAX_ITERATIONS 1000
-#define FRAMES 2400
+#define FRAMES 10
 #define MAX_MAGNIFICATION 0.0000000000001
 #define NUM_THREADS 8
 
-
 unsigned int Mand (mpf_t initx, mpf_t inity, unsigned int iterations) {
-    mpf_t cx,cy,xsq,ysq, tmp;
-    mpf_init(cx);
-    mpf_init(cy);
-    mpf_init(xsq);
-    mpf_init(ysq);
-    mpf_init(tmp);
+    mpf_t cx,cy,xsq,ysq,ab, cmp;
+    mpf_init_set_d(cx,  0.0);
+    mpf_init_set_d(cy,  0.0);
+    mpf_init_set_d(xsq, 0.0);
+    mpf_init_set_d(ysq, 0.0);
+    mpf_init_set_d(ab, 0.0);
+    mpf_init_set_d(cmp, 0.0);
     unsigned int iter = 0;
 
-    mpf_mul(tmp, initx, initx);
-    mpf_add(cx, initx, tmp);
-    mpf_mul(tmp, inity, inity);
-    mpf_sub(cx, cx, tmp);
+    mpf_mul(xsq, initx, initx);
+    mpf_mul(ysq, inity, inity);
+    mpf_mul(ab,  initx, inity);
 
-    mpf_mul(tmp, initx, inity);
-    mpf_mul_ui(cy, tmp,2);
+    mpf_sub(cx, xsq, ysq);
+    mpf_add(cx, cx, initx);
+
+    mpf_add(cy, ab, ab);
     mpf_add(cy, cy, inity);
 
-    while(true){
-        mpf_pow_ui(ysq, cy, 2);
-        mpf_pow_ui(xsq, cx, 2);
-        mpf_add(tmp, xsq, ysq);
-        if(iter > iterations || mpf_cmp_ui(tmp, 4)>0) break;
-        iter++;
-        mpf_mul(tmp, cx, cy);
-        mpf_mul_ui(tmp, tmp, 2);
-        mpf_add(cy, inity, tmp);
 
-        mpf_add(tmp, ysq, xsq);
-        mpf_sub(cx, initx, tmp);
+    while(true){
+        mpf_mul(xsq, cx, cx);
+        mpf_mul(ysq, cy, cy);
+        mpf_add(cmp, xsq, ysq);
+        if(iter > iterations || mpf_cmp_ui(cmp, 16)>0) break;
+        iter++;
+        mpf_mul(ab,  cx, cy);
+
+        mpf_sub(cx, xsq, ysq);
+        mpf_add(cx, cx, initx);
+
+        mpf_add(cy, ab, ab);
+        mpf_add(cy, cy, inity);
     }
     return iter;
 
@@ -54,38 +58,34 @@ unsigned int Mand (mpf_t initx, mpf_t inity, unsigned int iterations) {
     // for (iter=0;iter<iterations && (ysq=cy*cy)+(xsq=cx*cx)<4;iter++,cy=inity+cx*cy+cx*cy,cx=initx-ysq+xsq) ;
 }
 
-unsigned char colors[4][4] = {{255, 0, 0, 255},{0, 255, 0, 255},{0, 0, 255},{123, 230, 90, 255}};
-double dx = -0.0700212907411218; 
-double dy = - 0.8224676131988761;
 
-std::queue<int> tasks;
-
-void imagen(){
+int main(){
+    mpf_set_default_prec(128);
     mpf_t scale, dx, dy, scale_mul, iw, jh, width, height, x, y;
-    mpf_init_set_str(dx, "-0.0700212907411218", 10);
-    mpf_init_set_str(dy, "-0.8224676131988761", 10);
+    mpf_init_set_d(dx,-0.026593792304386393);
+    mpf_init_set_d(dy,-0.8095285579867694);
     mpf_init_set_d(width, ((double)WIDTH));
     mpf_init_set_d(height, ((double)HEIGHT));
-    mpf_init_set_d(scale, 1.0);
-    mpf_init_set_d(scale_mul, 0.99);
+    mpf_init_set_d(scale, 0.01);
+    mpf_init_set_d(scale_mul, 0.90);
     mpf_init(iw);
     mpf_init(jh);
     mpf_init(x);
     mpf_init(y);
-    while(!tasks.empty()){
-        int frame = tasks.front();
-        tasks.pop();
+
+    for(int frame = 0; frame < FRAMES; frame++){
         unsigned char* data = (unsigned char*)malloc(HEIGHT*WIDTH*4*sizeof(unsigned char));
         mpf_mul(scale, scale, scale_mul);
             for(int i = 0; i< WIDTH; i++){
-                printf("Row %d\n", i);
                 mpf_set_d(iw, (double)i/WIDTH);
                 for(int j = 0; j < HEIGHT; j++){
                     mpf_set_d(jh, (double)j/HEIGHT);
                     mpf_mul(x, iw, scale);
                     mpf_mul(y, jh, scale);
+                    mpf_add(x, x, dx);
+                    mpf_add(y, y, dy);
                     int res = Mand(x, y, MAX_ITERATIONS);
-                    if(res == 1000){
+                    if(res > 999){
                         data[(WIDTH*j+i)*4+0] = 0;
                         data[(WIDTH*j+i)*4+1] = 0;
                         data[(WIDTH*j+i)*4+2] = 0;
@@ -105,24 +105,5 @@ void imagen(){
             stbi_write_png(buf, WIDTH, HEIGHT, 4, data,WIDTH*4);
             printf("Generated frame: %d", frame);
         }
-    return;
-}
-
-
-int main(){
-    mpf_set_default_prec(1024);
-    int frame = 0;
-    for(int i = 0; i < FRAMES; i++){
-        tasks.push(i);
-    }
-    // std::vector<std::thread> threads;
-    // for(int i = 0; i < NUM_THREADS; i++){
-    //     threads.push_back(std::thread(imagen));
-    //     frame ++;
-    // }
-    // for(int i = 0 ; i < NUM_THREADS; i++){
-    //     threads[i].join();
-    // }
-    imagen();
     return 0;
 }
