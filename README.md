@@ -1,6 +1,5 @@
 # Mandelbrot set
-![mandelbrot zoom](https://github.com/michbogos/mandelbrot/blob/main/zoom.gif?raw=true)
-
+![mandelbrot set](https://github.com/michbogos/mandelbrot/blob/main/hip.png?raw=true)
 This is an experiment in rendering the mandelbrot set and fractals in general.
 
 Zoom generated with c++avx2 implementation.
@@ -44,6 +43,8 @@ make multithreaded
 This is fast enough to generate hundreds of frames.
 
 Uses stb_image_write.h to write frames. Frames are saved in frames/*.png.
+
+![mandelbrot zoom](https://github.com/michbogos/mandelbrot/blob/main/zoom.gif?raw=true)
 
 ## Optimized c implementation
 
