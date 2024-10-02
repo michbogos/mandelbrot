@@ -59,7 +59,7 @@ __global__ void MyKernel(unsigned char*frame, double scale, double dx, double dy
 	for(int n = 0; n < N; n++){
 		i = hipCadd(hipCmul(i, i), c);
 		if(hipCabs(i)>10e10f){
-			double logzn = (logf(hipCabs(i))/2.0f)*scale;
+			double logzn = (logf(hipCabs(i))/2.0f);
 			double nu = logf(logzn / logf(2)) / logf(2);
 			double iter = (double)n+1-nu;
 			struct color col = color_interp(colors[((int)floorf(iter))%2], colors[(((int)floorf(iter))+1)%2], iter-floorf(iter));
