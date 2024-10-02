@@ -1,5 +1,5 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "../include/stb_image_write.h"
 #include<stdlib.h>
 #include<string.h>
 #include<stdio.h>

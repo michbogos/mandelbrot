@@ -7,7 +7,7 @@
 #include <string>
 #include <fstream>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include "../include/stb_image_write.h"
 #define E (2.7182818284590452353602874713527)
 
 #define SAMPLE_VERSION "HIP-Examples-Application-v1.0"

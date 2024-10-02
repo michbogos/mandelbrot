@@ -1,5 +1,5 @@
 # Mandelbrot set
-![mandelbrot set](https://github.com/michbogos/mandelbrot/blob/main/hip.png?raw=true)
+![mandelbrot set](https://github.com/michbogos/mandelbrot/blob/main/images/hip.png?raw=true)
 
 This is an experiment in rendering the mandelbrot set and fractals in general.
 
@@ -45,7 +45,7 @@ This is fast enough to generate hundreds of frames.
 
 Uses stb_image_write.h to write frames. Frames are saved in frames/*.png.
 
-![mandelbrot zoom](https://github.com/michbogos/mandelbrot/blob/main/zoom.gif?raw=true)
+![mandelbrot zoom](https://github.com/michbogos/mandelbrot/blob/main/images/zoom.gif?raw=true)
 
 ## Optimized c implementation
 
@@ -58,7 +58,7 @@ make optimized
 ```
 
 ## Interactive shader raylib c implementation
-![mandelbrot image](https://github.com/michbogos/mandelbrot/blob/main/mandelbrot.png?raw=true)
+![mandelbrot image](https://github.com/michbogos/mandelbrot/blob/main/images/mandelbrot.png?raw=true)
 
 Compile with
 
