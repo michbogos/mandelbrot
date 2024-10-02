@@ -1,5 +1,6 @@
 # Mandelbrot set
 ![mandelbrot set](https://github.com/michbogos/mandelbrot/blob/main/hip.png?raw=true)
+
 This is an experiment in rendering the mandelbrot set and fractals in general.
 
 Zoom generated with c++avx2 implementation.

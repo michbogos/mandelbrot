@@ -59,7 +59,7 @@ __global__ void MyKernel(unsigned char*frame, double scale, double dx, double dy
 	for(int n = 0; n < N; n++){
 		i = hipCadd(hipCmul(i, i), c);
 		if(hipCabs(i)>10e10f){
-			double logzn = logf(hipCabs(i))/2.0f;
+			double logzn = (logf(hipCabs(i))/2.0f)*scale;
 			double nu = logf(logzn / logf(2)) / logf(2);
 			double iter = (double)n+1-nu;
 			struct color col = color_interp(colors[((int)floorf(iter))%2], colors[(((int)floorf(iter))+1)%2], iter-floorf(iter));
@@ -87,12 +87,23 @@ int main(int argc, char* argv[])
 	unsigned char *output = (unsigned char*) malloc(WIDTH*HEIGHT*3);
 
 	unsigned char* outputBuffer;
-    hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(unsigned char));
 
-	MyKernel<<<dim3((WIDTH)/BLOCK, (HEIGHT)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, 4, -3, -2, 1000);
+	double scale = 2;
+	double scale_fac = 0.90;
 
-	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3, hipMemcpyDeviceToHost);
-	stbi_write_png("hip.png", WIDTH, HEIGHT, 3, output, HEIGHT*3);
-    hipFree(outputBuffer);
+	hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(unsigned char));
+
+	for(int i =0; i < (int)(floor(log(0.0000000000001)/log(scale_fac))); i++){
+		scale *= scale_fac;
+
+		MyKernel<<<dim3((WIDTH)/BLOCK, (HEIGHT)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, scale,-1.0519852,-0.251337, 500);
+
+		hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3, hipMemcpyDeviceToHost);
+		char buf[255];
+		sprintf(buf, "frames/%04d.png", i);
+		stbi_write_png(buf, WIDTH, HEIGHT, 3, output, HEIGHT*3);
+		printf("Rendered frame: %d @ %lf\n", i, scale);
+	}
+	hipFree(outputBuffer);
 	return SUCCESS;
 }
