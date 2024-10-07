@@ -20,12 +20,12 @@ out vec4 finalColor;
 void main(){
     vec2 uv = ((-resolution.xy + 2.0*(gl_FragCoord.xy))/resolution.y).xy;
     vec2 z = topLeft+uv*scale;
-    vec2 c = z;
+    vec2 c = vec2(sqrt(0.1), sqrt(0.3));
     int iteration = 0;
-    while(length(z)<1000 && iteration < 1000){
-        z = product(product(z, product(z, z)), product(z, z)) + c;
+    while(length(z)<1000000 && iteration < 1000){
+        z = product(z, z) + c;
         iteration ++;
     }
-    float v = iteration+1.0f-log(log(length(z))/3)/log(3);
-    finalColor = length(z)<1000 ? vec4(0, 0, 0, 1) :mix(colors[int(floor(v))%2], colors[(int(floor(v))+1)%2], v-floor(v));
+    float v = iteration+1.0f-log(log(length(z))/2)/log(2);
+    finalColor = length(z)<1000000 ? vec4(0, 0, 0, 1) :mix(colors[int(floor(v))%2], colors[(int(floor(v))+1)%2], v-floor(v));
 }

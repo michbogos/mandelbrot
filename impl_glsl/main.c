@@ -3,7 +3,7 @@
 
 int main(void)
 {
-    InitWindow(800, 450, "raylib [core] example - basic window");
+    InitWindow(1600, 900, "raylib [core] example - basic window");
     Shader FractalShader = LoadShader(0, "mandelbrot.fs");
 
     int iresLoc        = GetShaderLocation(FractalShader, "resolution");
@@ -12,7 +12,7 @@ int main(void)
 
     
 
-    float resolution[2] = {800, 450};
+    float resolution[2] = {1600, 900};
 
     float topLeft[2] = {0, 0};
     float scale = 1.0f;
@@ -28,7 +28,7 @@ int main(void)
         BeginDrawing();
             ClearBackground(BLACK);
             BeginShaderMode(FractalShader);
-                    DrawRectangle(0, 0, 800, 450, BLACK);
+                    DrawRectangle(0, 0, 1600, 900, BLACK);
             EndShaderMode();
             DrawFPS(10, 10);
         EndDrawing();
