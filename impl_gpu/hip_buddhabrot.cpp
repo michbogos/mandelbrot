@@ -14,6 +14,8 @@
 #define SAMPLE_VERSION "HIP-Examples-Application-v1.0"
 #define SUCCESS 0
 #define FAILURE 1
+#define ITERATIONS 100
+#define N_SAMPLES 1024*31
 
 #define WIDTH  (512)
 #define HEIGHT (512)
@@ -36,48 +38,92 @@ __device__ struct color color_interp(struct color c1, struct color c2, double t)
     return res;
 }
 
+__device__ float2 add_imaginary(float2 a, float2 b){
+	return a+b;
+}
+
+__device__ float2 mul_imaginary(float2 a, float2 b){
+	return make_float2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x);
+}
+
+__device__ float mag_imaginary(float2 a){
+	return sqrtf(a.x*a.x+a.y*a.y);
+}
+
 
 __device__ double interpolate(double a, double b, double t){
 	return a*(1.0f-t)+b*t;
 }
 
-__global__ void MyKernel(float *frame, double scale, double dx, double dy ,int N)
+__global__ void MyKernel(float*frame, float* data)
 {
-	color colors[2] = {(struct color){10, 254, 176}, (struct color){56, 12, 86}};
-	std::vector<hipDoubleComplex> points;
-	// for(int x = 0; (x<BLOCK)&&(blockIdx.x*BLOCK+x<HEIGHT);x++){
-	// 	for(int y = 0; (y<BLOCK)&&(blockIdx.y*BLOCK+y<WIDTH);y++){
-		int x = threadIdx.x;
-		int y = threadIdx.y;
-	// 			hipDoubleComplex c = make_hipDoubleComplex(((BLOCK*blockIdx.x+x)/(WIDTH*0.5f)-1.0f)*scale-0.0700432019411218, (blockIdx.y/(HEIGHT*0.5f)-1.0f)*scale-0.8224676332988761);
-	// hipDoubleComplex i = make_hipDoubleComplex((blockIdx.x/(WIDTH*0.5f)-1.0f)*scale-0.0700432019411218, (blockIdx.y/(HEIGHT*0.5f)-1.0f)*scale-0.8224676332988761);
-		hipDoubleComplex c = make_hipDoubleComplex(dx+((((double)(blockIdx.x*BLOCK)+x)/((double)HEIGHT/255.0))/255.0)*scale, dy+(((((double)blockIdx.y*BLOCK+y)/((double)WIDTH/255.0)))/255.0)*scale);
-		hipDoubleComplex i = c;
-		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = (int)(hipCreal(c)*256);
-		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = (int)(hipCimag(c)*256);
-		// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = (int)0;
-	// 	}
-	// }
-	for(int n = 0; n < N; n++){
-		i = hipCadd(hipCmul(i, i), c);
-		points.push_back(i);
-		if(hipCabs(i)>10e10f){
-			for(auto p : points){
-				if(crealf(p)>dx, && crealf(p) < dx+(HEIGHT*(blockIdx.x*BLOCK)))
+	int x = threadIdx.x;
+	float2 c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	float2 i = c;
+	bool viable = false;
+	for(int n = 0; n < ITERATIONS; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(mag_imaginary(i)>10000.0f){
+			viable = true;
 			}
-			// double logzn = (logf(hipCabs(i))/2.0f);
-			// double nu = logf(logzn / logf(2)) / logf(2);
-			// double iter = (double)n+1-nu;
-			// struct color col = color_interp(colors[((int)floorf(iter))%2], colors[(((int)floorf(iter))+1)%2], iter-floorf(iter));
-			// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = col.r;
-			// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = col.g;
-			// frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = col.b;
-			return;
+		}
+	if(!viable)return;
+
+	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	i = c;
+	for(int n = 0; n < ITERATIONS; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f/log(N_SAMPLES));
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 		}
 	}
-	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0] = 0;
-	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+1] = 0;
-	frame[((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+2] = 0;
+	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	i = c;
+
+	viable = false;
+	for(int n = 0; n < ITERATIONS-50; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(mag_imaginary(i)>10000.0f){
+			viable = true;
+			}
+		}
+	if(!viable)return;
+
+	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	i = c;
+	for(int n = 0; n < ITERATIONS-50; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f/log(N_SAMPLES));
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
+		}
+	}
+
+	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	i = c;
+
+	viable = false;
+	for(int n = 0; n < ITERATIONS-80; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(mag_imaginary(i)>10000.0f){
+			viable = true;
+			}
+		}
+	if(!viable)return;
+
+	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	i = c;
+	for(int n = 0; n < ITERATIONS-80; n++){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
+			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f/log(N_SAMPLES));
+		}
+	}
 	return;
 }
 
@@ -90,23 +136,35 @@ int main(int argc, char* argv[])
     cout << " agent prop name " << devProp.name << endl;
 
 
-	float *output = (float*) malloc(WIDTH*HEIGHT*3*4);
+	float *output = (float*) malloc(WIDTH*HEIGHT*3*sizeof(float));
 
 	float* outputBuffer;
+	float* deviceData;
 
 	double scale = 2;
 	double scale_fac = 0.90;
+	float data[BLOCK*N_SAMPLES*2];
+
+	for(int i = 0; i < BLOCK*N_SAMPLES*2; i++){
+		data[i]=((float)rand()/(float)(RAND_MAX))*3.0f-1.5f;
+	}
 
 	hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(float));
+	hipMalloc((void**)&deviceData, N_SAMPLES*2*BLOCK*sizeof(float));
+	hipMemcpy(deviceData, data, 2*BLOCK*N_SAMPLES*sizeof(float), hipMemcpyHostToDevice);
 
-	for(int i =0; i < (int)(floor(log(0.0000000000001)/log(scale_fac))); i++){
-		scale *= scale_fac;
+	//for(int i =0; i < (int)(floor(log(0.0000000000001)/log(scale_fac))); i++){
+	scale *= scale_fac;
 
-		MyKernel<<<dim3((WIDTH)/BLOCK, (HEIGHT)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, scale,-1.0519852,-0.251337, 500);
+	MyKernel<<<dim3(N_SAMPLES), dim3(BLOCK), 0, 0>>> (outputBuffer, deviceData);
 
-		hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3, hipMemcpyDeviceToHost);
-		stbi_write_hdr("buddhabrot.png", WIDTH, HEIGHT, 3, output);
-	}
+	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3*sizeof(float), hipMemcpyDeviceToHost);
+	char buf[255];
+	sprintf(buf, "%04d.hdr", 1);
+	stbi_write_hdr(buf, WIDTH, HEIGHT, 3, output);
+	printf("Rendered frame: %d @ %lf\n", 1, scale);
+//}
 	hipFree(outputBuffer);
+	hipFree(deviceData);
 	return SUCCESS;
 }

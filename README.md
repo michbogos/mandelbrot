@@ -76,3 +76,7 @@ Use the Arrow keys to move. Space to zoom.
 Run main.py with python.
 
 Requires numpy
+
+## Buddhabrot with HIP
+
+![mandelbrot image](https://github.com/michbogos/mandelbrot/blob/main/images/buddha.png?raw=true)
