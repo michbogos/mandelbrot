@@ -15,10 +15,10 @@
 #define SUCCESS 0
 #define FAILURE 1
 #define ITERATIONS 5000
-#define N_SAMPLES (1024*1024*16)
+#define N_SAMPLES (1024*1024*32)
 
-#define WIDTH  (4096*2)
-#define HEIGHT (4096*2)
+#define WIDTH  (1024*4)
+#define HEIGHT (1024*4)
 
 #define BLOCK 32
 
@@ -38,6 +38,31 @@ __device__ struct color color_interp(struct color c1, struct color c2, double t)
     return res;
 }
 
+struct pcg_state_setseq_64 {    // Internals are *Private*.
+    uint64_t state;             // RNG state.  All values are possible.
+    uint64_t inc;               // Controls which RNG sequence (stream) is
+                                // selected. Must *always* be odd.
+};
+typedef struct pcg_state_setseq_64 pcg32_random_t;
+
+__device__ uint32_t pcg32_random_r(pcg32_random_t* rng)
+{
+    uint64_t oldstate = rng->state;
+    rng->state = oldstate * 6364136223846793005ULL + rng->inc;
+    uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+    uint32_t rot = oldstate >> 59u;
+    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+}
+
+__device__ void pcg32_srandom_r(pcg32_random_t* rng, uint64_t initstate, uint64_t initseq)
+{
+    rng->state = 0U;
+    rng->inc = (initseq << 1u) | 1u;
+    pcg32_random_r(rng);
+    rng->state += initstate;
+    pcg32_random_r(rng);
+}
+
 __device__ float2 add_imaginary(float2 a, float2 b){
 	return a+b;
 }
@@ -55,10 +80,15 @@ __device__ double interpolate(double a, double b, double t){
 	return a*(1.0f-t)+b*t;
 }
 
-__global__ void MyKernel(float*frame, float* data)
+__global__ void MyKernel(float*frame)
 {
 	int x = threadIdx.x;
-	float2 c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	float aspect_ratio = (float)(WIDTH)/(float)(HEIGHT);
+	pcg32_random_t rng;
+	pcg32_srandom_r(&rng, blockIdx.x*BLOCK+x, threadIdx.x);
+	float xcoord = ((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*3.0-1.5;
+	float ycoord = ((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*3.0-1.5;
+	float2 c = make_float2(xcoord, ycoord);
 	float2 i = c;
 	bool viable = false;
 	for(int n = 0; n < ITERATIONS; n++){
@@ -69,17 +99,17 @@ __global__ void MyKernel(float*frame, float* data)
 		}
 	if(!viable)return;
 
-	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	c = make_float2(xcoord, ycoord);
 	i = c;
 	for(int n = 0; n < ITERATIONS; n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f/ITERATIONS);
+		if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, 1.0f/ITERATIONS);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 		}
 	}
-	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	c = make_float2(xcoord, ycoord);
 	i = c;
 
 	viable = false;
@@ -91,18 +121,18 @@ __global__ void MyKernel(float*frame, float* data)
 		}
 	if(!viable)return;
 
-	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	c = make_float2(xcoord, ycoord);
 	i = c;
 	for(int n = 0; n < (int)((float)ITERATIONS*0.1f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
+		if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f/(ITERATIONS*0.1f));
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/(ITERATIONS*0.1f));
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 		}
 	}
 
-	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	c = make_float2(xcoord, ycoord);
 	i = c;
 
 	viable = false;
@@ -114,14 +144,14 @@ __global__ void MyKernel(float*frame, float* data)
 		}
 	if(!viable)return;
 
-	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
+	c = make_float2(xcoord, ycoord);
 	i = c;
 	for(int n = 0; n < (int)((float)ITERATIONS*0.01f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
+		if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f/((float)ITERATIONS*0.01f));
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+2, 1.0f/((float)ITERATIONS*0.01f));
 		}
 	}
 	return;
@@ -144,18 +174,12 @@ int main()
 	double scale_fac = 0.90;
 	float* data = (float*)malloc(BLOCK*N_SAMPLES*2*sizeof(float));
 
-	for(int i = 0; i < BLOCK*N_SAMPLES*2; i++){
-		data[i]=((float)rand()/(float)(RAND_MAX))*3.0f-1.5f;
-	}
-
 	hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(float));
-	hipMalloc((void**)&deviceData, N_SAMPLES*2*BLOCK*sizeof(float));
-	hipMemcpy(deviceData, data, 2*BLOCK*N_SAMPLES*sizeof(float), hipMemcpyHostToDevice);
 
 	//for(int i =0; i < (int)(floor(log(0.0000000000001)/log(scale_fac))); i++){
 	scale *= scale_fac;
 
-	MyKernel<<<dim3(N_SAMPLES), dim3(BLOCK), 0, 0>>> (outputBuffer, deviceData);
+	MyKernel<<<dim3(N_SAMPLES), dim3(BLOCK), 0, 0>>> (outputBuffer);
 
 	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3*sizeof(float), hipMemcpyDeviceToHost);
 	char buf[255];
