@@ -14,11 +14,11 @@
 #define SAMPLE_VERSION "HIP-Examples-Application-v1.0"
 #define SUCCESS 0
 #define FAILURE 1
-#define ITERATIONS 100
-#define N_SAMPLES 1024*31
+#define ITERATIONS 5000
+#define N_SAMPLES (1024*1024*16)
 
-#define WIDTH  (512)
-#define HEIGHT (512)
+#define WIDTH  (4096*2)
+#define HEIGHT (4096*2)
 
 #define BLOCK 32
 
@@ -74,7 +74,7 @@ __global__ void MyKernel(float*frame, float* data)
 	for(int n = 0; n < ITERATIONS; n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
 		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f/log(N_SAMPLES));
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f/ITERATIONS);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 		}
@@ -83,7 +83,7 @@ __global__ void MyKernel(float*frame, float* data)
 	i = c;
 
 	viable = false;
-	for(int n = 0; n < ITERATIONS-50; n++){
+	for(int n = 0; n < (int)((float)ITERATIONS*0.01f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
 		if(mag_imaginary(i)>10000.0f){
 			viable = true;
@@ -93,11 +93,11 @@ __global__ void MyKernel(float*frame, float* data)
 
 	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
 	i = c;
-	for(int n = 0; n < ITERATIONS-50; n++){
+	for(int n = 0; n < (int)((float)ITERATIONS*0.1f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
 		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f/log(N_SAMPLES));
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f/(ITERATIONS*0.1f));
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 		}
 	}
@@ -106,7 +106,7 @@ __global__ void MyKernel(float*frame, float* data)
 	i = c;
 
 	viable = false;
-	for(int n = 0; n < ITERATIONS-80; n++){
+	for(int n = 0; n < (int)((float)ITERATIONS*0.01f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
 		if(mag_imaginary(i)>10000.0f){
 			viable = true;
@@ -116,34 +116,33 @@ __global__ void MyKernel(float*frame, float* data)
 
 	c = make_float2(data[2*blockIdx.x*BLOCK+x],data[2*blockIdx.x*BLOCK+x+1]);
 	i = c;
-	for(int n = 0; n < ITERATIONS-80; n++){
+	for(int n = 0; n < (int)((float)ITERATIONS*0.01f); n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
 		if(abs(i.x) < 1.5 && abs(i.y) < 1.5){
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 			//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
-			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f/log(N_SAMPLES));
+			atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f/((float)ITERATIONS*0.01f));
 		}
 	}
 	return;
 }
 
-int main(int argc, char* argv[])
+int main()
 {
-    hipDeviceProp_t devProp;
-    hipGetDeviceProperties(&devProp, 0);
-    cout << " System minor " << devProp.minor << endl;
-    cout << " System major " << devProp.major << endl;
-    cout << " agent prop name " << devProp.name << endl;
+    // hipDeviceProp_t devProp;
+    // hipGetDeviceProperties(&devProp, 0);
+    // cout << " System minor " << devProp.minor << endl;
+    // cout << " System major " << devProp.major << endl;
+    // cout << " agent prop name " << devProp.name << endl;
 
-
-	float *output = (float*) malloc(WIDTH*HEIGHT*3*sizeof(float));
+	float* output = (float*)malloc(WIDTH*HEIGHT*3*sizeof(float));
 
 	float* outputBuffer;
 	float* deviceData;
 
 	double scale = 2;
 	double scale_fac = 0.90;
-	float data[BLOCK*N_SAMPLES*2];
+	float* data = (float*)malloc(BLOCK*N_SAMPLES*2*sizeof(float));
 
 	for(int i = 0; i < BLOCK*N_SAMPLES*2; i++){
 		data[i]=((float)rand()/(float)(RAND_MAX))*3.0f-1.5f;
