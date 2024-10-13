@@ -10,15 +10,16 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../include/stb_image_write.h"
 #define E (2.7182818284590452353602874713527)
+#define HIP_HOST_COHERENT 1
 
 #define SAMPLE_VERSION "HIP-Examples-Application-v1.0"
 #define SUCCESS 0
 #define FAILURE 1
 #define ITERATIONS 5000
-#define N_SAMPLES (1024*1024*32)
+#define N_SAMPLES (1024*1024*16)
 
-#define WIDTH  (1024*4)
-#define HEIGHT (1024*4)
+#define WIDTH  (1080*4)
+#define HEIGHT (1920*4)
 
 #define BLOCK 32
 
@@ -159,12 +160,6 @@ __global__ void MyKernel(float*frame)
 
 int main()
 {
-    // hipDeviceProp_t devProp;
-    // hipGetDeviceProperties(&devProp, 0);
-    // cout << " System minor " << devProp.minor << endl;
-    // cout << " System major " << devProp.major << endl;
-    // cout << " agent prop name " << devProp.name << endl;
-
 	float* output = (float*)malloc(WIDTH*HEIGHT*3*sizeof(float));
 
 	float* outputBuffer;
@@ -175,8 +170,6 @@ int main()
 	float* data = (float*)malloc(BLOCK*N_SAMPLES*2*sizeof(float));
 
 	hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(float));
-
-	//for(int i =0; i < (int)(floor(log(0.0000000000001)/log(scale_fac))); i++){
 	scale *= scale_fac;
 
 	MyKernel<<<dim3(N_SAMPLES), dim3(BLOCK), 0, 0>>> (outputBuffer);
