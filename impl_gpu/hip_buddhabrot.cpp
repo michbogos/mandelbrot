@@ -20,8 +20,8 @@
 #define ITERATIONS 5000
 #define N_SAMPLES (1024*1024)
 
-#define WIDTH  (1024)
-#define HEIGHT (1024)
+#define WIDTH  (1024*4)
+#define HEIGHT (1024*4)
 
 #define BLOCK 32ll
 
@@ -97,7 +97,7 @@ __global__ void RenderFractal(float* __restrict__ frame)
 	bool viable2 = false;
 	bool viable3 = false;
 	for(int n = 0; n < ITERATIONS*0.01; n++){
-		i = add_imaginary(mul_imaginary(i, i), c);
+		i = add_imaginary(mul_imaginary(mul_imaginary(i, i), mul_imaginary(i, i)), c);
 		if(mag_imaginary(i)>10000.0f){
 			viable1 = true;
 			viable2 = true;
