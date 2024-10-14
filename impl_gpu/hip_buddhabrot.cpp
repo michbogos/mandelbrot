@@ -18,10 +18,10 @@
 #define SUCCESS 0
 #define FAILURE 1
 #define ITERATIONS 5000
-#define N_SAMPLES (1024*1024*64)
+#define N_SAMPLES (1024*1024)
 
-#define WIDTH  (4096*2)
-#define HEIGHT (4096*2)
+#define WIDTH  (1024)
+#define HEIGHT (1024)
 
 #define BLOCK 32ll
 
@@ -81,58 +81,6 @@ __device__ float mag_imaginary(float2 a){
 
 __device__ double interpolate(double a, double b, double t){
 	return a*(1.0f-t)+b*t;
-}
-
-__global__ void RenderTemplate(float* __restrict__ frame, float scale, float dx, float dy, int N)
-{
-		int x = threadIdx.x;
-		int y = threadIdx.y;
-		if(((HEIGHT*(blockIdx.x*BLOCK+x))+(blockIdx.y*BLOCK+y))*3+0 >= WIDTH*HEIGHT*3*sizeof(float)){
-			return;
-		}
-		hipDoubleComplex c = make_hipDoubleComplex(dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale, (dy+(((((double)blockIdx.y*BLOCK+y)/((double)HEIGHT))))*scale)/((float)WIDTH/(float)HEIGHT));
-		hipDoubleComplex i = c;
-	for(int n = 0; n < N; n++){
-		i = hipCadd(hipCmul(i, i), c);
-		if(hipCabs(i)>10e10f){
-			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = 1.0f;
-			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = 1.0f;
-			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = 1.0f;
-			return;
-		}
-	}
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = 0;
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = 0;
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = 0;
-	return;
-}
-
-__global__ void FindEdges(float* __restrict__ frame){
-	int x = threadIdx.x;
-	int y = threadIdx.y;
-	if(!(blockIdx.x*BLOCK+x > 1 && blockIdx.x*BLOCK+x < WIDTH-2 && blockIdx.y*BLOCK+y > 1 && blockIdx.y*BLOCK+y < HEIGHT-2)){
-		return;
-	}
-	if(!(x%BLOCK)){
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = 0.0f;
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = 0.0f;
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = 0.0f;
-		return;
-	}
-	if(!(y%BLOCK)){
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = 0.0f;
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = 0.0f;
-		// frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = 0.0f;
-		return;
-	}
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3] = 	1*frame[((WIDTH*(blockIdx.y*BLOCK+y-1))+(blockIdx.x*BLOCK+x-1))*3]+
-																   	2*frame[((WIDTH*(blockIdx.y*BLOCK+y+0))+(blockIdx.x*BLOCK+x-1))*3]+
-																   	1*frame[((WIDTH*(blockIdx.y*BLOCK+y+1))+(blockIdx.x*BLOCK+x-1))*3]+
-																   -1*frame[((WIDTH*(blockIdx.y*BLOCK+y-1))+(blockIdx.x*BLOCK+x+1))*3]+
-																   -2*frame[((WIDTH*(blockIdx.y*BLOCK+y+0))+(blockIdx.x*BLOCK+x+1))*3]+
-																   -1*frame[((WIDTH*(blockIdx.y*BLOCK+y+1))+(blockIdx.x*BLOCK+x+1))*3];
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = 0.0f;
-	frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = 0.0f;
 }
 
 __global__ void RenderFractal(float* __restrict__ frame)
@@ -237,24 +185,10 @@ __global__ void RenderFractal(float* __restrict__ frame)
 int main()
 {
 	float* output = (float*)malloc(WIDTH*HEIGHT*3*sizeof(float));
-
 	float* outputBuffer;
-	float* deviceData;
-
-	double scale = 2;
-	double scale_fac = 0.90;
-	float* data = (float*)malloc(BLOCK*N_SAMPLES*2*sizeof(float));
-	static int* __managed__ num_points;
-
 	clock_t tic = clock();
-
 	hipMalloc((void**)&outputBuffer, WIDTH*HEIGHT*3*sizeof(float));
-	scale *= scale_fac;
-
-	RenderTemplate<<<dim3((WIDTH+BLOCK-1)/BLOCK, (HEIGHT+BLOCK-1)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, 4.0f, -2.5, -2.0, 100);
-	FindEdges<<<dim3((WIDTH+BLOCK-1)/BLOCK, (HEIGHT+BLOCK-1)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer);
-	printf("Found: %d\n", *num_points);
-
+	RenderFractal<<<dim3(N_SAMPLES), dim3(BLOCK), 0, 0>>> (outputBuffer);
 	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3*sizeof(float), hipMemcpyDeviceToHost);
 	clock_t toc = clock();
 
@@ -263,12 +197,11 @@ int main()
 	sprintf(buf, "%04d.hdr", 1);
 	tic = clock();
 	if(stbi_write_hdr(buf, WIDTH, HEIGHT, 3, output)){
-		printf("Rendered frame: %d @ %lf\n", 1, scale);
+		printf("Rendered frame");
 	}
 	toc = clock();
 	printf("Image written in: %fs\n", (double)(toc-tic)/CLOCKS_PER_SEC);
-//}
-	hipFree(outputBuffer);
-	hipFree(deviceData);
+
+    hipFree(outputBuffer);
 	return SUCCESS;
 }
