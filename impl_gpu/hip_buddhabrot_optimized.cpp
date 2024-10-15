@@ -13,12 +13,13 @@
 #define E (2.7182818284590452353602874713527)
 
 #define HIP_HOST_COHERENT 1
+#define HIP_COHERENT_HOST_ALLOC 1
 
 #define SAMPLE_VERSION "HIP-Examples-Application-v1.0"
 #define SUCCESS 0
 #define FAILURE 1
-#define ITERATIONS 30000
-#define N_SAMPLES (1024*32)
+#define ITERATIONS 10000
+#define N_SAMPLES (1024*1024)
 
 #define WIDTH  (1920)
 #define HEIGHT (1080)
@@ -90,11 +91,11 @@ __global__ void RenderTemplate(float* frame, float scale, float dx, float dy, in
 	if(((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3 >= WIDTH*HEIGHT*3*sizeof(float)){
 		return;
 	}
-	hipDoubleComplex c = make_hipDoubleComplex(dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale, (dy+(((((double)blockIdx.y*BLOCK+y)/((double)HEIGHT))))*scale)/((float)WIDTH/(float)HEIGHT));
-	hipDoubleComplex i = c;
+	float2 c = make_float2(dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale, (dy+(((((double)blockIdx.y*BLOCK+y)/((double)HEIGHT))))*scale)/((float)WIDTH/(float)HEIGHT));
+	float2 i = c;
 	for(int n = 0; n < N; n++){
-		i = hipCadd(hipCmul(i, i), c);
-		if(hipCabs(i)>10e10f){
+		i = add_imaginary(mul_imaginary(i, i), c);
+		if(mag_imaginary(i)>10.0f){
 			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = (float)n/N;
 			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale;
 			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+2] = (dy+(((((double)blockIdx.y*BLOCK+y)/((double)HEIGHT))))*scale)/((float)WIDTH/(float)HEIGHT);
@@ -112,12 +113,12 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 	int x = threadIdx.x;
 	float aspect_ratio = (float)(WIDTH)/(float)(HEIGHT);
 	pcg32_random_t rng;
-	pcg32_srandom_r(&rng, blockIdx.x*BLOCK+x, threadIdx.x);
+	pcg32_srandom_r(&rng, blockIdx.x*BLOCK+x, blockIdx.x+threadIdx.x);
 	int point_idx = pcg32_random_r(&rng)%n_points;
 	// float xcoord = ((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*3.0-1.5;
 	// float ycoord = ((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*3.0-1.5;
-	float xcoord = points[2*point_idx]+((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*0.1-0.05;
-	float ycoord = points[2*point_idx+1]+((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*0.1-0.05;
+	float xcoord = points[2*point_idx]+((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*0.01-0.005;
+	float ycoord = points[2*point_idx+1]+((float)pcg32_random_r(&rng)/(float)UINT32_MAX)*0.01-0.005;
 	float2 c = make_float2(xcoord, ycoord);
 	float2 i = c;
 	bool viable1 = false;
@@ -125,7 +126,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 	bool viable3 = false;
 	for(int n = 0; n < ITERATIONS*0.01; n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(mag_imaginary(i)>10000.0f){
+		if(mag_imaginary(i)>10.0f){
 			viable1 = true;
 			viable2 = true;
 			viable3 = true;
@@ -133,14 +134,14 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 		}
 	for(int n = ITERATIONS*0.01; n < ITERATIONS*0.1 && !viable1; n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(mag_imaginary(i)>10000.0f){
+		if(mag_imaginary(i)>10.0f){
 			viable2 = true;
 			viable3 = true;
 			}
 		}
 	for(int n = ITERATIONS*0.1; n < ITERATIONS && !viable2; n++){
 		i = add_imaginary(mul_imaginary(i, i), c);
-		if(mag_imaginary(i)>10000.0f){
+		if(mag_imaginary(i)>10.0f){
 			viable3 = true;
 			}
 		}
@@ -155,13 +156,13 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+2, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+2, 1.0f/sqrt(N_SAMPLES));
 			}
 		}
 		for(int n = ITERATIONS*0.01f; n < ITERATIONS*0.1f; n++){
 			i = add_imaginary(mul_imaginary(i, i), c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
@@ -170,41 +171,39 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 			i = add_imaginary(mul_imaginary(i, i), c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
 		}
-		return;
 	}
 	if(viable2){
 		for(int n = 0; n < ITERATIONS*0.1f; n++){
 			i = add_imaginary(mul_imaginary(i, i), c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
 		}
+		__threadfence();
 		for(int n = ITERATIONS*0.1; n < (int)((float)ITERATIONS); n++){
 			i = add_imaginary(mul_imaginary(i, i), c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
 		}
-		return;
 	}
 	if(viable3){
 		for(int n = 0; n < (int)((float)ITERATIONS); n++){
 			i = add_imaginary(mul_imaginary(i, i), c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
-				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, .2f/log2(N_SAMPLES));
+				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
 		}
-		return;
 	}
 	return;
 }
@@ -220,7 +219,7 @@ int main()
 
 	clock_t tic = clock();
 
-	RenderTemplate<<<dim3((WIDTH+BLOCK-1)/BLOCK, (HEIGHT+BLOCK-1)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, 4.0f, -2.5, -2.0, 100);
+	RenderTemplate<<<dim3((WIDTH+BLOCK-1)/BLOCK, (HEIGHT+BLOCK-1)/BLOCK), dim3(BLOCK, BLOCK), 0, 0>>> (outputBuffer, 4.0f, -2.5, -2.0, 500);
 
 	hipMemcpy(output, outputBuffer,WIDTH*HEIGHT*3*sizeof(float), hipMemcpyDeviceToHost);
 
