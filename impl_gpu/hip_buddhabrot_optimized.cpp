@@ -19,7 +19,7 @@
 #define SUCCESS 0
 #define FAILURE 1
 #define ITERATIONS 10000
-#define N_SAMPLES (1024*1024)
+#define N_SAMPLES (1024*512)
 
 #define WIDTH  (1920)
 #define HEIGHT (1080)
@@ -68,11 +68,15 @@ __device__ void pcg32_srandom_r(pcg32_random_t* rng, uint64_t initstate, uint64_
 }
 
 __device__ float2 add_imaginary(float2 a, float2 b){
-	return a+b;
+	return a-b;
 }
 
 __device__ float2 mul_imaginary(float2 a, float2 b){
 	return make_float2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x);
+}
+
+__device__ float2 div_imaginary(float2 a, float2 b){
+	return make_float2((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y), (a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y));
 }
 
 __device__ float mag_imaginary(float2 a){
@@ -82,6 +86,14 @@ __device__ float mag_imaginary(float2 a){
 
 __device__ double interpolate(double a, double b, double t){
 	return a*(1.0f-t)+b*t;
+}
+
+__device__ float2 conjugate_imaginary(float2 a){
+	return make_float2(a.x, -a.y);
+}
+
+__device__ float2 iterate_point(float2 i, float2 c){
+	return mul_imaginary(mul_imaginary(mul_imaginary(mul_imaginary(i, i), mul_imaginary(i, i)), mul_imaginary(mul_imaginary(i, i), mul_imaginary(i, i))), mul_imaginary(mul_imaginary(mul_imaginary(i, i), mul_imaginary(i, i)), mul_imaginary(mul_imaginary(i, i), mul_imaginary(i, i))))+c;
 }
 
 __global__ void RenderTemplate(float* frame, float scale, float dx, float dy, int N)
@@ -94,7 +106,7 @@ __global__ void RenderTemplate(float* frame, float scale, float dx, float dy, in
 	float2 c = make_float2(dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale, (dy+(((((double)blockIdx.y*BLOCK+y)/((double)HEIGHT))))*scale)/((float)WIDTH/(float)HEIGHT));
 	float2 i = c;
 	for(int n = 0; n < N; n++){
-		i = add_imaginary(mul_imaginary(i, i), c);
+		i = iterate_point(i, c);
 		if(mag_imaginary(i)>10.0f){
 			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+0] = (float)n/N;
 			frame[((WIDTH*(blockIdx.y*BLOCK+y))+(blockIdx.x*BLOCK+x))*3+1] = dx+((((double)(blockIdx.x*BLOCK)+x)/((double)WIDTH)))*scale;
@@ -125,7 +137,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 	bool viable2 = false;
 	bool viable3 = false;
 	for(int n = 0; n < ITERATIONS*0.01; n++){
-		i = add_imaginary(mul_imaginary(i, i), c);
+		i = iterate_point(i, c);
 		if(mag_imaginary(i)>10.0f){
 			viable1 = true;
 			viable2 = true;
@@ -133,14 +145,14 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 			}
 		}
 	for(int n = ITERATIONS*0.01; n < ITERATIONS*0.1 && !viable1; n++){
-		i = add_imaginary(mul_imaginary(i, i), c);
+		i = iterate_point(i, c);
 		if(mag_imaginary(i)>10.0f){
 			viable2 = true;
 			viable3 = true;
 			}
 		}
 	for(int n = ITERATIONS*0.1; n < ITERATIONS && !viable2; n++){
-		i = add_imaginary(mul_imaginary(i, i), c);
+		i = iterate_point(i, c);
 		if(mag_imaginary(i)>10.0f){
 			viable3 = true;
 			}
@@ -152,7 +164,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 
 	if(viable1){
 		for(int n = 0; n < (int)((float)ITERATIONS*0.01f); n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
@@ -160,7 +172,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 			}
 		}
 		for(int n = ITERATIONS*0.01f; n < ITERATIONS*0.1f; n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
@@ -168,7 +180,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 			}
 		}
 		for(int n = ITERATIONS*0.1; n < (int)((float)ITERATIONS); n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
@@ -178,16 +190,15 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 	}
 	if(viable2){
 		for(int n = 0; n < ITERATIONS*0.1f; n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+0, 1.0f/sqrt(N_SAMPLES));
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+1, 1.0f);
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+2, 1.0f);
 			}
 		}
-		__threadfence();
 		for(int n = ITERATIONS*0.1; n < (int)((float)ITERATIONS); n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
@@ -197,7 +208,7 @@ __global__ void RenderFractal(float* __restrict__ frame, float* __restrict__ poi
 	}
 	if(viable3){
 		for(int n = 0; n < (int)((float)ITERATIONS); n++){
-			i = add_imaginary(mul_imaginary(i, i), c);
+			i = iterate_point(i, c);
 			if(abs(i.x) < 1.5*((float)WIDTH/HEIGHT) && abs(i.y) < 1.5){
 				//atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5)/3.0f)*WIDTH))*3+0, 1.0f);
 				atomicAdd((float*)frame+((int)(((i.y+1.5)/3.0f)*HEIGHT)*WIDTH + (int)(((i.x+1.5*aspect_ratio)/(3.0f*aspect_ratio)*WIDTH)))*3+1, 1.0f/sqrt(N_SAMPLES));
