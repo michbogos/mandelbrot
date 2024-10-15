@@ -80,3 +80,4 @@ Requires numpy
 ## Buddhabrot with HIP
 
 ![mandelbrot image](https://github.com/michbogos/mandelbrot/blob/main/images/buddha.png?raw=true)
+![mandelbrot image](https://github.com/michbogos/mandelbrot/blob/main/images/buddha2.png?raw=true)
