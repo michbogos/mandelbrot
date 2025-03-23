@@ -8,3 +8,10 @@ gmp
 zoom.mp4
 hip
 program
+_deps/
+CMakeFiles/
+*.cmake
+CMakeCache.txt
+*.in
+kompute_array_mult
+*.spv
