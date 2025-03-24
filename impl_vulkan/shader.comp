@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_shader_atomic_float: enable
 
 #define product(a, b) vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x)
 #define conjugate(a) vec2(a.x,-a.y)

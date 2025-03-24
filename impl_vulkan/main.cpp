@@ -16,7 +16,7 @@
 int
 main()
 {
-    kp::Manager mgr;
+    kp::Manager mgr(0, {}, { "VK_EXT_shader_atomic_float" });
 
    auto tensorOut =
       mgr.tensor(WIDTH*HEIGHT*3, 4, kp::Memory::DataTypes::eFloat);
