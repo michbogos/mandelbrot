@@ -1,15 +1,42 @@
 #version 450
 
+#define product(a, b) vec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x)
+#define conjugate(a) vec2(a.x,-a.y)
+#define divide(a, b) vec2(((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y)))
+
 // The execution structure
-layout (local_size_x = 1,local_size_y = 1, local_size_z = 1) in;
+layout (local_size_x = 32,local_size_y = 32, local_size_z = 1) in;
 
 // The buffers are provided via the tensors
 layout(binding = 0) buffer bufOut { float o[]; };
+layout(push_constant) uniform constants {
+            uint width;
+            uint height;
+} pc;
 
 void main() {
-    uint x = gl_GlobalInvocationID.x;
-    uint y = gl_GlobalInvocationID.y;
-    o[3*(512*y+x)] = float(x)/512.0f;
-    o[3*(512*y+x)+1] = float(y)/512.0f;
-    o[3*(512*y+x)+2] = float(x+y)/512.0f;
+    float aspectRatio = float(pc.width)/float(pc.height);
+    uint globX = gl_GlobalInvocationID.x;
+    uint globY = gl_GlobalInvocationID.y;
+    uint locX =  gl_LocalInvocationID.x;
+    uint locY = gl_LocalInvocationID.y;
+    uint x = globX;
+    uint y = globY;
+    if(globX >= pc.width || globY >= pc.height){
+        return;
+    }
+    vec2 c = vec2((x/float(pc.width)-0.5)*2*aspectRatio,(y/float(pc.height)-0.5)*2);
+    vec2 imag = c;
+    for(int i = 0; i < 100; i++){
+        imag = product(imag, imag)+c;
+        if(length(imag) > 10.0f){
+            o[3*(pc.width*y+x)] = 0;
+            o[3*(pc.width*y+x)+1] = 0;
+            o[3*(pc.width*y+x)+2] = 0;
+            return;
+        }
+    }
+    o[3*(pc.width*y+x)] = float(x)/float(pc.width);
+    o[3*(pc.width*y+x)+1] = float(y)/float(pc.height);
+    o[3*(pc.width*y+x)+2] = float(y)/float(pc.height);
 }
