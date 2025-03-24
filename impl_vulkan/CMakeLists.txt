@@ -20,14 +20,15 @@ endif()
 # Compiling shader
 # To add more shaders simply copy the vulkan_compile_shader command and replace it with your new shader
 vulkan_compile_shader(
-    INFILE shader/my_shader.comp
-    OUTFILE shader/my_shader.hpp
+    INFILE shader.comp
+    OUTFILE shader.hpp
     NAMESPACE "shader")
 
 # Then add it to the library, so you can access it later in your code
-add_library(shader INTERFACE "shader/my_shader.hpp")
+add_library(shader INTERFACE "shader.hpp")
 target_include_directories(shader INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
 # Setting up main example code
 add_executable(kompute_array_mult main.cpp)
+target_include_directories(kompute_array_mult PUBLIC ".")
 target_link_libraries(kompute_array_mult PRIVATE shader kompute::kompute)
