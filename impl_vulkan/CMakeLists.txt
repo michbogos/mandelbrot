@@ -28,7 +28,9 @@ vulkan_compile_shader(
 add_library(shader INTERFACE "shader.hpp")
 target_include_directories(shader INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 
+
+
 # Setting up main example code
-add_executable(kompute_array_mult main.cpp)
-target_include_directories(kompute_array_mult PUBLIC ".")
-target_link_libraries(kompute_array_mult PRIVATE shader kompute::kompute)
+add_executable(program main.cpp)
+target_include_directories(program PUBLIC ".")
+target_link_libraries(program PRIVATE shader kompute::kompute)

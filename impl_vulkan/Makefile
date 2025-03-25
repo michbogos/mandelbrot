@@ -195,17 +195,17 @@ shader/fast:
 .PHONY : shader/fast
 
 #=============================================================================
-# Target rules for targets named kompute_array_mult
+# Target rules for targets named program
 
 # Build rule for target.
-kompute_array_mult: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 kompute_array_mult
-.PHONY : kompute_array_mult
+program: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 program
+.PHONY : program
 
 # fast build rule for target.
-kompute_array_mult/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kompute_array_mult.dir/build.make CMakeFiles/kompute_array_mult.dir/build
-.PHONY : kompute_array_mult/fast
+program/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/program.dir/build.make CMakeFiles/program.dir/build
+.PHONY : program/fast
 
 #=============================================================================
 # Target rules for targets named uninstall
@@ -277,7 +277,7 @@ main.o: main.cpp.o
 
 # target to build an object file
 main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kompute_array_mult.dir/build.make CMakeFiles/kompute_array_mult.dir/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/program.dir/build.make CMakeFiles/program.dir/main.cpp.o
 .PHONY : main.cpp.o
 
 main.i: main.cpp.i
@@ -285,7 +285,7 @@ main.i: main.cpp.i
 
 # target to preprocess a source file
 main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kompute_array_mult.dir/build.make CMakeFiles/kompute_array_mult.dir/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/program.dir/build.make CMakeFiles/program.dir/main.cpp.i
 .PHONY : main.cpp.i
 
 main.s: main.cpp.s
@@ -293,7 +293,7 @@ main.s: main.cpp.s
 
 # target to generate assembly for a file
 main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/kompute_array_mult.dir/build.make CMakeFiles/kompute_array_mult.dir/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/program.dir/build.make CMakeFiles/program.dir/main.cpp.s
 .PHONY : main.cpp.s
 
 # Help Target
@@ -313,9 +313,9 @@ help:
 	@echo "... uninstall"
 	@echo "... fmt"
 	@echo "... kompute"
-	@echo "... kompute_array_mult"
 	@echo "... kp_logger"
 	@echo "... kp_shader"
+	@echo "... program"
 	@echo "... shader"
 	@echo "... main.o"
 	@echo "... main.i"

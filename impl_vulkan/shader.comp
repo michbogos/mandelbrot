@@ -26,18 +26,51 @@ void main() {
     if(globX >= pc.width || globY >= pc.height){
         return;
     }
+    uint iterations = 0;
     vec2 c = vec2((x/float(pc.width)-0.5)*2*aspectRatio,(y/float(pc.height)-0.5)*2);
     vec2 imag = c;
-    for(int i = 0; i < 100; i++){
+    for(int i = 0; i < 10000; i++){
         imag = product(imag, imag)+c;
-        if(length(imag) > 10.0f){
-            o[3*(pc.width*y+x)] = 0;
-            o[3*(pc.width*y+x)+1] = 0;
-            o[3*(pc.width*y+x)+2] = 0;
-            return;
+        if(length(imag) > 2.0f){
+            // o[3*(pc.width*y+x)] = 0;
+            // o[3*(pc.width*y+x)+1] = 0;
+            // o[3*(pc.width*y+x)+2] = 0;
+            iterations = i;
+            break;
         }
     }
-    o[3*(pc.width*y+x)] = float(x)/float(pc.width);
-    o[3*(pc.width*y+x)+1] = float(y)/float(pc.height);
-    o[3*(pc.width*y+x)+2] = float(y)/float(pc.height);
+    c = vec2((x/float(pc.width)-0.5)*2*aspectRatio,(y/float(pc.height)-0.5)*2);
+    imag = c;
+    if(iterations > 7000){
+        for(int i = 0; i < iterations; i++){
+            imag = product(imag, imag)+c;
+            uint posx = uint(((imag.x/aspectRatio/2)+0.5)*float(pc.width));
+            uint posy = uint(((imag.y/2)+0.5)*float(pc.height));
+            atomicAdd(o[3*(pc.width*posy+posx)+0], 1.0f);
+            //atomicAdd(o[3*(pc.width*posy+posx)+1], 1.0f);
+            //atomicAdd(o[3*(pc.width*posy+posx)+2], 1.0f);
+        }
+    }
+
+    if(iterations > 1000 && iterations < 7000){
+        for(int i = 0; i < iterations; i++){
+            imag = product(imag, imag)+c;
+            uint posx = uint(((imag.x/aspectRatio/2)+0.5)*float(pc.width));
+            uint posy = uint(((imag.y/2)+0.5)*float(pc.height));
+            //atomicAdd(o[3*(pc.width*posy+posx)+0], 1.0f);
+            atomicAdd(o[3*(pc.width*posy+posx)+1], 0.1f);
+            //atomicAdd(o[3*(pc.width*posy+posx)+2], 1.0f);
+        }
+    }
+
+    if(iterations > 30 && iterations < 1000){
+        for(int i = 0; i < iterations; i++){
+            imag = product(imag, imag)+c;
+            uint posx = uint(((imag.x/aspectRatio/2)+0.5)*float(pc.width));
+            uint posy = uint(((imag.y/2)+0.5)*float(pc.height));
+            //atomicAdd(o[3*(pc.width*posy+posx)+0], 1.0f);
+            //atomicAdd(o[3*(pc.width*posy+posx)+1], 1.0f);
+            atomicAdd(o[3*(pc.width*posy+posx)+2], 0.5f);
+        }
+    }
 }
