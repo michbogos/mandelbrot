@@ -8,8 +8,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#define WIDTH 1920
-#define HEIGHT 1080
+#define WIDTH (1920*2)
+#define HEIGHT (1080*2)
 #define WARP_SZIE 32
 
 
@@ -27,7 +27,7 @@ int main() {
 
   const std::vector<uint32_t> shader = std::vector<uint32_t>(
     shader::SHADER_COMP_SPV.begin(), shader::SHADER_COMP_SPV.end());
-  std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, shader, {(WIDTH+WARP_SZIE-1)/WARP_SZIE, (HEIGHT+WARP_SZIE-1)/WARP_SZIE, 1}, {WIDTH, HEIGHT}, {WIDTH, HEIGHT});
+  std::shared_ptr<kp::Algorithm> algo = mgr.algorithm(params, shader, {(WIDTH+WARP_SZIE-1)/WARP_SZIE, (HEIGHT+WARP_SZIE-1)/WARP_SZIE, 32}, {WIDTH, HEIGHT}, {WIDTH, HEIGHT});
   
 
   mgr.sequence()

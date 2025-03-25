@@ -6,7 +6,7 @@
 #define divide(a, b) vec2(((a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y)),((a.y*b.x-a.x*b.y)/(b.x*b.x+b.y*b.y)))
 
 // The execution structure
-layout (local_size_x = 32,local_size_y = 32, local_size_z = 1) in;
+layout (local_size_x = 32,local_size_y = 32, local_size_z = 2) in;
 
 // The buffers are provided via the tensors
 layout(binding = 0) buffer bufOut { float o[]; };
@@ -15,19 +15,29 @@ layout(push_constant) uniform constants {
             uint height;
 } pc;
 
+float rand(vec2 co){
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+
 void main() {
     float aspectRatio = float(pc.width)/float(pc.height);
     uint globX = gl_GlobalInvocationID.x;
     uint globY = gl_GlobalInvocationID.y;
+    uint globZ = gl_GlobalInvocationID.z;
     uint locX =  gl_LocalInvocationID.x;
     uint locY = gl_LocalInvocationID.y;
+    uint locZ = gl_LocalInvocationID.z;
     uint x = globX;
     uint y = globY;
+    uint z = globZ;
     if(globX >= pc.width || globY >= pc.height){
         return;
     }
     uint iterations = 0;
     vec2 c = vec2((x/float(pc.width)-0.5)*2*aspectRatio,(y/float(pc.height)-0.5)*2);
+    c.x += (rand(vec2(x+y*pc.width, z))-0.5)/float(pc.width)*aspectRatio;
+    c.y += (rand(vec2(x+y*pc.width, z))-0.5)/float(pc.height);
     vec2 imag = c;
     for(int i = 0; i < 10000; i++){
         imag = product(imag, imag)+c;
@@ -40,6 +50,8 @@ void main() {
         }
     }
     c = vec2((x/float(pc.width)-0.5)*2*aspectRatio,(y/float(pc.height)-0.5)*2);
+    c.x += (rand(vec2(x+y*pc.width, z))-0.5)/float(pc.width)*aspectRatio;
+    c.y += (rand(vec2(x+y*pc.width, z))-0.5)/float(pc.height);
     imag = c;
     if(iterations > 7000){
         for(int i = 0; i < iterations; i++){
@@ -58,7 +70,7 @@ void main() {
             uint posx = uint(((imag.x/aspectRatio/2)+0.5)*float(pc.width));
             uint posy = uint(((imag.y/2)+0.5)*float(pc.height));
             //atomicAdd(o[3*(pc.width*posy+posx)+0], 1.0f);
-            atomicAdd(o[3*(pc.width*posy+posx)+1], 0.1f);
+            atomicAdd(o[3*(pc.width*posy+posx)+1], 1.0f);
             //atomicAdd(o[3*(pc.width*posy+posx)+2], 1.0f);
         }
     }
@@ -70,7 +82,7 @@ void main() {
             uint posy = uint(((imag.y/2)+0.5)*float(pc.height));
             //atomicAdd(o[3*(pc.width*posy+posx)+0], 1.0f);
             //atomicAdd(o[3*(pc.width*posy+posx)+1], 1.0f);
-            atomicAdd(o[3*(pc.width*posy+posx)+2], 0.5f);
+            atomicAdd(o[3*(pc.width*posy+posx)+2], 1.0f);
         }
     }
 }
